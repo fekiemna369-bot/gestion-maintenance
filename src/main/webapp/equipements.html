@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des équipements</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 2rem;
+    background: #f5f6f8;
+    color: #222;
+  }
+  h1 { margin-top: 0; color: #1e3a8a; }
+  .container { max-width: 900px; margin: 0 auto; }
+
+  form {
+    background: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .champ { display: flex; flex-direction: column; gap: .25rem; }
+  .champ label { font-size: .8rem; color: #555; font-weight: 600; }
+  input {
+    padding: .5rem .7rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: .95rem;
+    min-width: 180px;
+  }
+  input:focus { outline: 2px solid #3b82f6; border-color: #3b82f6; }
+  button {
+    padding: .55rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background: #1e3a8a;
+    color: #fff;
+    font-size: .9rem;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  button:hover { background: #2742a0; }
+  button.danger { background: #b91c1c; }
+  button.danger:hover { background: #dc2626; }
+  button.secondary { background: #6b7280; }
+  button.secondary:hover { background: #4b5563; }
+  button.small { padding: .3rem .6rem; font-size: .8rem; margin-right: .3rem; }
+
+  table {
+    width: 100%;
+    background: #fff;
+    border-collapse: collapse;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #f8fafc; font-weight: 600; color: #555; font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+
+  .erreur {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: .75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .erreur.visible { display: block; }
+  .succes {
+    background: #d1fae5;
+    color: #065f46;
+    padding: .75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .succes.visible { display: block; }
+  .vide { text-align: center; color: #888; padding: 2rem; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Gestion des équipements</h1>
+
+  <div id="erreur" class="erreur"></div>
+  <div id="succes" class="succes"></div>
+
+  <form id="formAjout">
+    <div class="champ">
+      <label for="designation">Désignation</label>
+      <input id="designation" name="designation" placeholder="ex : projecteur" required>
+    </div>
+    <div class="champ">
+      <label for="lieu">Lieu</label>
+      <input id="lieu" name="lieu" placeholder="ex : salle A" required>
+    </div>
+    <button type="submit">Ajouter</button>
+    <button type="button" id="btnAnnuler" class="secondary" style="display:none">Annuler</button>
+  </form>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:60px">Id</th>
+        <th>Désignation</th>
+        <th>Lieu</th>
+        <th style="width:220px">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="4" class="vide">Chargement…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const API = '/maintenance/equipements';
+const tbody   = document.getElementById('tbody');
+const erreur  = document.getElementById('erreur');
+const succes  = document.getElementById('succes');
+const form    = document.getElementById('formAjout');
+const btnAnnuler = document.getElementById('btnAnnuler');
+
+let modeEdition = null; // null = ajout, sinon id en cours de modification
+let cache = [];         // pour pré-remplir le formulaire lors d'une édition
+
+function afficherErreur(msg) {
+  erreur.textContent = msg || '';
+  erreur.classList.toggle('visible', !!msg);
+  succes.classList.remove('visible');
+}
+function afficherSucces(msg) {
+  succes.textContent = msg || '';
+  succes.classList.toggle('visible', !!msg);
+  erreur.classList.remove('visible');
+}
+
+async function charger() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) {
+      afficherErreur('Erreur lors du chargement (' + r.status + ')');
+      return;
+    }
+    cache = await r.json();
+    rendreTableau();
+  } catch (e) {
+    afficherErreur('Impossible de contacter le serveur : ' + e.message);
+  }
+}
+
+function rendreTableau() {
+  if (cache.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="vide">Aucun équipement enregistré.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = cache.map(e => `
+    <tr>
+      <td>${e.id}</td>
+      <td>${escapeHtml(e.designation)}</td>
+      <td>${escapeHtml(e.lieu)}</td>
+      <td>
+        <button class="small" data-action="edit" data-id="${e.id}">Modifier</button>
+        <button class="small danger" data-action="del" data-id="${e.id}">Supprimer</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function viderFormulaire() {
+  form.reset();
+  modeEdition = null;
+  btnAnnuler.style.display = 'none';
+  form.querySelector('button[type=submit]').textContent = 'Ajouter';
+}
+
+async function soumettre(ev) {
+  ev.preventDefault();
+  afficherErreur('');
+  afficherSucces('');
+
+  const body = {
+    designation: form.designation.value.trim(),
+    lieu: form.lieu.value.trim()
+  };
+
+  try {
+    let r;
+    if (modeEdition === null) {
+      // création
+      r = await fetch(API, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+    } else {
+      // modification
+      r = await fetch(API + '/' + modeEdition, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+    }
+
+    if (!r.ok) {
+      afficherErreur(await r.text());
+      return;
+    }
+
+    afficherSucces(modeEdition === null ? 'Équipement ajouté.' : 'Équipement modifié.');
+    viderFormulaire();
+    charger();
+  } catch (e) {
+    afficherErreur('Erreur réseau : ' + e.message);
+  }
+}
+
+function editer(id) {
+  const e = cache.find(x => x.id === id);
+  if (!e) return;
+  modeEdition = id;
+  form.designation.value = e.designation;
+  form.lieu.value = e.lieu;
+  btnAnnuler.style.display = 'inline-block';
+  form.querySelector('button[type=submit]').textContent = 'Enregistrer';
+  form.designation.focus();
+}
+
+async function supprimer(id) {
+  const e = cache.find(x => x.id === id);
+  const nom = e ? `« ${e.designation} » (${e.lieu})` : `id=${id}`;
+  if (!confirm('Supprimer ' + nom + ' ?')) return;
+
+  try {
+    const r = await fetch(API + '/' + id, { method: 'DELETE' });
+    if (r.status === 204) {
+      afficherSucces('Équipement supprimé.');
+      charger();
+    } else if (r.status === 409) {
+      afficherErreur(await r.text());
+    } else {
+      afficherErreur('Erreur ' + r.status + ' : ' + (await r.text()));
+    }
+  } catch (e) {
+    afficherErreur('Erreur réseau : ' + e.message);
+  }
+}
+
+// Délégation d'événements sur le tableau
+tbody.addEventListener('click', ev => {
+  const btn = ev.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id, 10);
+  if (btn.dataset.action === 'edit') editer(id);
+  else if (btn.dataset.action === 'del') supprimer(id);
+});
+
+form.addEventListener('submit', soumettre);
+btnAnnuler.addEventListener('click', viderFormulaire);
+
+charger();
+</script>
+</body>
+</html>
