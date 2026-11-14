@@ -1,12 +1,43 @@
+
+# Java compiled files
 target/
-*.war
 *.class
+*.jar
+*.war
+*.nar
+*.ear
+
+# IDE - IntelliJ IDEA
 .idea/
 *.iml
-.vscode/
+
+# IDE - Eclipse
 .settings/
 .classpath
 .project
+
+# IDE - VS Code
+.vscode/
+
+# Java temporary files
+.mtj.tmp/
+*.ctxt
+
+# Logs
+*.log
+
+# Archive files
+*.zip
+*.tar.gz
+*.rar
+
+# Java Virtual Machine crash logs
+hs_err_pid*
+replay_pid*
+
+# OS files
 Thumbs.db
 .DS_Store
-*.log
+
+# Environment variables
+.env
