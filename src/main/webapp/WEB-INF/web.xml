@@ -25,5 +25,27 @@
     <welcome-file-list>
         <welcome-file>equipements.html</welcome-file>
     </welcome-file-list>
+    <servlet>
+        <servlet-name>demandeController</servlet-name>
+        <servlet-class>tn.enetcom.maintenance.demande.controller.DemandeController</servlet-class>
+    </servlet>
 
+    <servlet-mapping>
+        <servlet-name>demandeController</servlet-name>
+        <url-pattern>/demandes</url-pattern>
+    </servlet-mapping>
+
+    <servlet-mapping>
+        <servlet-name>demandeController</servlet-name>
+        <url-pattern>/demandes/*</url-pattern>
+    </servlet-mapping>
+    <servlet>
+        <servlet-name>devSessionController</servlet-name>
+        <servlet-class>tn.enetcom.maintenance.common.DevSessionController</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>devSessionController</servlet-name>
+        <url-pattern>/dev/session</url-pattern>
+    </servlet-mapping>
 </web-app>
